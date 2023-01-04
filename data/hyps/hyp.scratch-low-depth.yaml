@@ -32,4 +32,4 @@ fliplr: 0.5  # image flip left-right (probability)
 mosaic: 1.0  # image mosaic (probability)
 mixup: 0.0  # image mixup (probability)
 copy_paste: 0.0  # segment copy-paste (probability)
-dep: 0.5  # depth loss gain
+dep: 0.02  # depth loss gain, choose a relatively low value since depth is not normalized to [0,1]

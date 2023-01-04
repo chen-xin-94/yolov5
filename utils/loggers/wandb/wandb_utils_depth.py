@@ -432,7 +432,8 @@ class WandbLogger():
             box_data, img_classes = [], {}
             for cls, *xywh, dep in labels[:, 1:5].tolist():
                 cls = int(cls)
-                dep = float(dep) * 146.85 # only for kitti dataset
+                # dep = float(dep) * 146.85 # only for kitti dataset
+                dep = float(dep)
                 box_data.append({
                     "position": {
                         "middle": [xywh[0], xywh[1]],
@@ -464,7 +465,8 @@ class WandbLogger():
         for *xyxy, conf, cls, dep in predn.tolist():
             if conf >= 0.25:
                 cls = int(cls)
-                dep = float(dep) * 146.85 # only for kitti dataset
+                # dep = float(dep) * 146.85 # only for kitti dataset
+                dep = float(dep)
                 box_data.append({
                     "position": {
                         "minX": xyxy[0],
@@ -514,7 +516,8 @@ class WandbLogger():
                         "maxX": xyxy[2],
                         "maxY": xyxy[3]},
                     "class_id": int(cls),
-                    "depth": float(dep) * 146.85, # only for kitti dataset,
+                    # "depth": float(dep) * 146.85, # only for kitti dataset,
+                    "depth": float(dep),
                     "box_caption": f"{names[int(cls)]} {conf:.3f}",
                     "scores": {
                         "class_score": conf},

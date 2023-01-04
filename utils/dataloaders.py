@@ -1251,7 +1251,10 @@ def verify_image_label_depth(args):
             if nl:
                 assert lb.shape[1] == 6, f'labels require 6 columns, {lb.shape[1]} columns detected' # 6 columns for depth
                 assert (lb >= 0).all(), f'negative label values {lb[lb < 0]}'
-                assert (lb[:, 1:] <= 1).all(), f'non-normalized or out of bounds coordinates {lb[:, 1:][lb[:, 1:] > 1]}'
+                # do not check normalzation for depth
+                # assert (lb[:, 1:] <= 1).all(), f'non-normalized or out of bounds coordinates {lb[:, 1:][lb[:, 1:] > 1]}'
+                assert (lb[:, 1:-1] <= 1).all(), f'non-normalized or out of bounds coordinates {lb[:, 1:-1][lb[:, 1:-1] > 1]}'
+
                 _, i = np.unique(lb, axis=0, return_index=True)
                 if len(i) < nl:  # duplicate row check
                     lb = lb[i]  # remove duplicates

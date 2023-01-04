@@ -276,19 +276,19 @@ def plot_images(images, targets, paths=None, fname='images.jpg', names=None):
             classes = ti[:, 1].astype('int')
 
             # check what should be in the labels # TODO: check if that breaks drawing for segmentation tasks
-            if '_pred' in str(fname): # targets in format [batch_id, cls, x, y, w, h, conf, depth]
+            if '_pred_' in str(fname):  # targets in format [batch_id, cls, x, y, w, h, conf, depth]
                 is_conf = ti.shape[1] == 7  # is there a conf column?
                 is_dep = ti.shape[1] == 8  # is there a depth column?
                 conf = ti[:, 6] if is_conf or is_dep else None  # check for confidence presence (label vs pred)
                 dep = ti[:, 7] if is_dep else None  # check for depth presence (label vs pred)
-            if '_gt' in str(fname): # targets in format [batch_id, cls, x, y, w, h, depth]
+            else:  # targets are ground truth, and in format [batch_id, cls, x, y, w, h, depth]
                 is_conf = None
                 is_dep = ti.shape[1] == 7  # is there a depth column?
                 dep = ti[:, 6] if is_dep else None  # check for depth presence (label vs pred)
-            draw_conf = "_conf" in str(fname) and is_conf # if draw conf in labels
-            draw_dep = "_depth" in str(fname) and is_dep # if draw depth in labels
+            draw_conf = "_conf" in str(fname) and is_conf  # if draw conf in labels
+            draw_dep = '_depth' in str(fname) and is_dep  # if draw depth in labels
 
-            # # depth is normalized to [0,1] for kitti dataset, so multiplied by 146.85 to get the real depth
+            # depth is normalized to [0,1] for kitti dataset, so multiplied by 146.85 to get the real depth
             # dep = dep * 146.85 if dep
 
             if boxes.shape[1]:
