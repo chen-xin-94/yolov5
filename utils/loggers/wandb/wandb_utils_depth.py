@@ -15,7 +15,7 @@ ROOT = FILE.parents[3]  # YOLOv5 root directory
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))  # add ROOT to PATH
 
-from utils.dataloaders import LoadImagesAndLabels, img2label_paths
+from utils.dataloaders import LoadImagesAndLabelsDepth, img2label_paths
 from utils.general import LOGGER, check_dataset, check_file
 
 try:
@@ -355,14 +355,14 @@ class WandbLogger():
 
         # log train set
         if not log_val_only:
-            self.train_artifact = self.create_dataset_table(LoadImagesAndLabels(data['train'], rect=True, batch_size=1),
+            self.train_artifact = self.create_dataset_table(LoadImagesAndLabelsDepth(data['train'], rect=True, batch_size=1),
                                                             names,
                                                             name='train') if data.get('train') else None
             if data.get('train'):
                 data['train'] = WANDB_ARTIFACT_PREFIX + str(Path(project) / 'train')
 
         self.val_artifact = self.create_dataset_table(
-            LoadImagesAndLabels(data['val'], rect=True, batch_size=1), names, name='val') if data.get('val') else None
+            LoadImagesAndLabelsDepth(data['val'], rect=True, batch_size=1), names, name='val') if data.get('val') else None
         if data.get('val'):
             data['val'] = WANDB_ARTIFACT_PREFIX + str(Path(project) / 'val')
 
@@ -400,12 +400,12 @@ class WandbLogger():
         for i, data in enumerate(tqdm(self.val_table.data)):
             self.val_table_path_map[data[3]] = data[0]
 
-    def create_dataset_table(self, dataset: LoadImagesAndLabels, class_to_id: Dict[int, str], name: str = 'dataset'):
+    def create_dataset_table(self, dataset: LoadImagesAndLabelsDepth, class_to_id: Dict[int, str], name: str = 'dataset'):
         """
         Create and return W&B artifact containing W&B Table of the dataset.
 
         arguments:
-        dataset -- instance of LoadImagesAndLabels class used to iterate over the data to build Table
+        dataset -- instance of LoadImagesAndLabelsDepth class used to iterate over the data to build Table
         class_to_id -- hash map that maps class ids to labels
         name -- name of the artifact
 
@@ -430,14 +430,16 @@ class WandbLogger():
         class_set = wandb.Classes([{'id': id, 'name': name} for id, name in class_to_id.items()])
         for si, (img, labels, paths, shapes) in enumerate(tqdm(dataset)):
             box_data, img_classes = [], {}
-            for cls, *xywh in labels[:, 1:5].tolist():
+            for cls, *xywh, dep in labels[:, 1:5].tolist():
                 cls = int(cls)
+                dep = float(dep) * 146.85 # only for kitti dataset
                 box_data.append({
                     "position": {
                         "middle": [xywh[0], xywh[1]],
                         "width": xywh[2],
                         "height": xywh[3]},
                     "class_id": cls,
+                    "depth": dep,
                     "box_caption": "%s" % (class_to_id[cls])})
                 img_classes[cls] = class_to_id[cls]
             boxes = {"ground_truth": {"box_data": box_data, "class_labels": class_to_id}}  # inference-space
@@ -451,7 +453,7 @@ class WandbLogger():
         Build evaluation Table. Uses reference from validation dataset table.
 
         arguments:
-        predn (list): list of predictions in the native space in the format - [xmin, ymin, xmax, ymax, confidence, class]
+        predn (list): list of predictions in the native space in the format [xmin, ymin, xmax, ymax, confidence, class, dep]
         path (str): local path of the current evaluation image
         names (dict(int, str)): hash map that maps class ids to labels
         """
@@ -459,9 +461,10 @@ class WandbLogger():
         box_data = []
         avg_conf_per_class = [0] * len(self.data_dict['names'])
         pred_class_count = {}
-        for *xyxy, conf, cls in predn.tolist():
+        for *xyxy, conf, cls, dep in predn.tolist():
             if conf >= 0.25:
                 cls = int(cls)
+                dep = float(dep) * 146.85 # only for kitti dataset
                 box_data.append({
                     "position": {
                         "minX": xyxy[0],
@@ -469,7 +472,8 @@ class WandbLogger():
                         "maxX": xyxy[2],
                         "maxY": xyxy[3]},
                     "class_id": cls,
-                    "box_caption": f"{names[cls]} {conf:.3f}",
+                    "depth": dep,
+                    "box_caption": f"{names[cls]} {conf:.1f} {dep:.2f}m",
                     "scores": {
                         "class_score": conf},
                     "domain": "pixel"})
@@ -494,8 +498,8 @@ class WandbLogger():
         Log validation data for one image. updates the result Table if validation dataset is uploaded and log bbox media panel
 
         arguments:
-        pred (list): list of scaled predictions in the format - [xmin, ymin, xmax, ymax, confidence, class]
-        predn (list): list of predictions in the native space - [xmin, ymin, xmax, ymax, confidence, class]
+        pred (list): list of scaled predictions in the format - [xmin, ymin, xmax, ymax, confidence, class, depth]
+        predn (list): list of predictions in the native space - [xmin, ymin, xmax, ymax, confidence, class, depth]
         path (str): local path of the current evaluation image
         """
         if self.val_table and self.result_table:  # Log Table if Val dataset is uploaded as artifact
@@ -510,10 +514,11 @@ class WandbLogger():
                         "maxX": xyxy[2],
                         "maxY": xyxy[3]},
                     "class_id": int(cls),
+                    "depth": float(dep) * 146.85, # only for kitti dataset,
                     "box_caption": f"{names[int(cls)]} {conf:.3f}",
                     "scores": {
                         "class_score": conf},
-                    "domain": "pixel"} for *xyxy, conf, cls in pred.tolist()]
+                    "domain": "pixel"} for *xyxy, conf, cls, dep in pred.tolist()]
                 boxes = {"predictions": {"box_data": box_data, "class_labels": names}}  # inference-space
                 self.bbox_media_panel_images.append(wandb.Image(im, boxes=boxes, caption=path.name))
 

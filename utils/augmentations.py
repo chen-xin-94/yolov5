@@ -47,7 +47,7 @@ class Albumentations:
 
     def __call__(self, im, labels, p=1.0):
         if self.transform and random.random() < p:
-            new = self.transform(image=im, bboxes=labels[:, 1:], class_labels=labels[:, 0])  # transformed
+            new = self.transform(image=im, bboxes=labels[:, 1:5], class_labels=labels[:, 0])  # transformed
             im, labels = new['image'], np.array([[c, *b] for c, b in zip(new['class_labels'], new['bboxes'])])
         return im, labels
 
@@ -94,7 +94,7 @@ def hist_equalize(im, clahe=True, bgr=False):
 def replicate(im, labels):
     # Replicate labels
     h, w = im.shape[:2]
-    boxes = labels[:, 1:].astype(int)
+    boxes = labels[:, 1:5].astype(int)
     x1, y1, x2, y2 = boxes.T
     s = ((x2 - x1) + (y2 - y1)) / 2  # side length (pixels)
     for i in s.argsort()[:round(s.size * 0.5)]:  # smallest indices

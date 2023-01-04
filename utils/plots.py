@@ -216,12 +216,17 @@ def butter_lowpass_filtfilt(data, cutoff=1500, fs=50000, order=5):
 
 
 def output_to_target(output, max_det=300):
-    # Convert model output to target format [batch_id, class_id, x, y, w, h, conf] for plotting
+    # Convert model output to target format [batch_id, class_id, x, y, w, h, conf, (dep)] for plotting
     targets = []
     for i, o in enumerate(output):
-        box, conf, cls = o[:max_det, :6].cpu().split((4, 1, 1), 1)
-        j = torch.full((conf.shape[0], 1), i)
-        targets.append(torch.cat((j, cls, xyxy2xywh(box), conf), 1))
+        if o.shape[1] == 6:  # without depth
+            box, conf, cls = o[:max_det, :6].cpu().split((4, 1, 1), 1)
+            j = torch.full((conf.shape[0], 1), i)
+            targets.append(torch.cat((j, cls, xyxy2xywh(box), conf), 1))
+        if o.shape[1] == 7: # with depth
+            box, conf, cls, dep = o[:max_det, :7].cpu().split((4, 1, 1, 1), 1)
+            j = torch.full((conf.shape[0], 1), i)
+            targets.append(torch.cat((j, cls, xyxy2xywh(box), conf, dep), 1))
     return torch.cat(targets, 0).numpy()
 
 
@@ -269,8 +274,13 @@ def plot_images(images, targets, paths=None, fname='images.jpg', names=None):
             ti = targets[targets[:, 0] == i]  # image targets
             boxes = xywh2xyxy(ti[:, 2:6]).T
             classes = ti[:, 1].astype('int')
-            labels = ti.shape[1] == 6  # labels if no conf column
-            conf = None if labels else ti[:, 6]  # check for confidence presence (label vs pred)
+            # modify for depth, # TODO: check if that breaks drawing for segmentation task
+            is_conf = ti.shape[1] == 7  # is there a conf column?
+            is_dep = ti.shape[1] == 8  # is there a depth column?
+            conf = ti[:, 6] if is_conf or is_dep else None  # check for confidence presence (label vs pred)
+            # depth is normalized to [0,1] for kitti dataset, so multiplied by 146.85 to get the real depth
+            # TODO: check if previous argument is true for other datasets
+            dep = ti[:, 7]*146.85 if is_dep else None  # check for depth presence (label vs pred)
 
             if boxes.shape[1]:
                 if boxes.max() <= 1.01:  # if normalized with tolerance 0.01
@@ -284,9 +294,13 @@ def plot_images(images, targets, paths=None, fname='images.jpg', names=None):
                 cls = classes[j]
                 color = colors(cls)
                 cls = names[cls] if names else cls
-                if labels or conf[j] > 0.25:  # 0.25 conf thresh
-                    label = f'{cls}' if labels else f'{cls} {conf[j]:.1f}'
-                    annotator.box_label(box, label, color=color)
+                # modify for depth
+                label = f'{cls}'
+                if is_conf:
+                    label = f'{cls} {conf[j]:.1f}'
+                if is_dep:
+                    label = f'{cls} {conf[j]:.1f} {dep[j]:.2f}m'
+                annotator.box_label(box, label, color=color)
     annotator.im.save(fname)  # save
 
 
@@ -386,7 +400,7 @@ def plot_val_study(file='', dir='', x=None):  # from utils.plots import *; plot_
 def plot_labels(labels, names=(), save_dir=Path('')):
     # plot dataset labels
     LOGGER.info(f"Plotting labels to {save_dir / 'labels.jpg'}... ")
-    c, b = labels[:, 0], labels[:, 1:].transpose()  # classes, boxes
+    c, b = labels[:, 0], labels[:, 1:5].transpose()  # classes, boxes
     nc = int(c.max() + 1)  # number of classes
     x = pd.DataFrame(b.transpose(), columns=['x', 'y', 'width', 'height'])
 
@@ -412,7 +426,7 @@ def plot_labels(labels, names=(), save_dir=Path('')):
 
     # rectangles
     labels[:, 1:3] = 0.5  # center
-    labels[:, 1:] = xywh2xyxy(labels[:, 1:]) * 2000
+    labels[:, 1:5] = xywh2xyxy(labels[:, 1:5]) * 2000
     img = Image.fromarray(np.ones((2000, 2000, 3), dtype=np.uint8) * 255)
     for cls, *box in labels[:1000]:
         ImageDraw.Draw(img).rectangle(box, width=1, outline=colors(cls))  # plot

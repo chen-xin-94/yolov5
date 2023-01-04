@@ -13,7 +13,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from utils.general import LOGGER, colorstr, cv2
 from utils.loggers.clearml.clearml_utils import ClearmlLogger
-from utils.loggers.wandb.wandb_utils_depth import WandbLogger
+from utils.loggers.wandb.wandb_utils import WandbLogger
 from utils.plots import plot_images, plot_labels, plot_results
 from utils.torch_utils import de_parallel
 
@@ -68,7 +68,6 @@ class Loggers():
             'train/box_loss',
             'train/obj_loss',
             'train/cls_loss',  # train loss
-            'train/dep_loss', # for depth
             'metrics/precision',
             'metrics/recall',
             'metrics/mAP_0.5',
@@ -76,7 +75,6 @@ class Loggers():
             'val/box_loss',
             'val/obj_loss',
             'val/cls_loss',  # val loss
-            'val/dep_loss',  # for depth
             'x/lr0',
             'x/lr1',
             'x/lr2']  # params
@@ -177,13 +175,13 @@ class Loggers():
                 self.comet_logger.on_pretrain_routine_end(paths)
 
     def on_train_batch_end(self, model, ni, imgs, targets, paths, vals):
-        log_dict = dict(zip(self.keys[0:4], vals)) # add one for depth
+        log_dict = dict(zip(self.keys[0:3], vals))
         # Callback runs on train batch end
         # ni: number integrated batches (since train start)
         if self.plots:
             if ni < 3:
                 f = self.save_dir / f'train_batch{ni}.jpg'  # filename
-                plot_images(imgs, targets[..., :-1], paths, f) # drop last dim for depth
+                plot_images(imgs, targets, paths, f)
                 if ni == 0 and self.tb and not self.opt.sync_bn:
                     log_tensorboard_graph(self.tb, model, imgsz=(self.opt.imgsz, self.opt.imgsz))
             if ni == 10 and (self.wandb or self.clearml):
@@ -237,7 +235,6 @@ class Loggers():
         if self.csv:
             file = self.save_dir / 'results.csv'
             n = len(x) + 1  # number of cols
-            # TODO: depth, check if %20s is ok after adding depth
             s = '' if file.exists() else (('%20s,' * n % tuple(['epoch'] + self.keys)).rstrip(',') + '\n')  # add header
             with open(file, 'a') as f:
                 f.write(s + ('%20.5g,' * n % tuple([epoch] + vals)).rstrip(',') + '\n')
@@ -291,7 +288,7 @@ class Loggers():
                 self.tb.add_image(f.stem, cv2.imread(str(f))[..., ::-1], epoch, dataformats='HWC')
 
         if self.wandb:
-            self.wandb.log(dict(zip(self.keys[4:12], results))) # also log for depth
+            self.wandb.log(dict(zip(self.keys[3:10], results)))
             self.wandb.log({"Results": [wandb.Image(str(f), caption=f.name) for f in files]})
             # Calling wandb.log. TODO: Refactor this into WandbLogger.log_model
             if not self.opt.evolve:
@@ -307,7 +304,7 @@ class Loggers():
                                                   auto_delete_file=False)
 
         if self.comet_logger:
-            final_results = dict(zip(self.keys[4:12], results)) # also log for depth
+            final_results = dict(zip(self.keys[3:10], results))
             self.comet_logger.on_train_end(files, self.save_dir, last, best, epoch, final_results)
 
     def on_params_update(self, params: dict):
@@ -350,7 +347,7 @@ class GenericLogger:
     def log_metrics(self, metrics, epoch):
         # Log metrics dictionary to all loggers
         if self.csv:
-            keys, vals = list(metrics.keys()), list(metrics.values()) # TODO: depth, depth not added jet
+            keys, vals = list(metrics.keys()), list(metrics.values())
             n = len(metrics) + 1  # number of cols
             s = '' if self.csv.exists() else (('%23s,' * n % tuple(['epoch'] + keys)).rstrip(',') + '\n')  # header
             with open(self.csv, 'a') as f:
