@@ -39,9 +39,7 @@ from models.common import DetectMultiBackend
 from utils.callbacks import Callbacks
 from utils.dataloaders import create_dataloader_depth
 from utils.general import (LOGGER, TQDM_BAR_FORMAT, Profile, check_dataset, check_img_size, check_requirements,
-                           check_yaml, coco80_to_coco91_class, colorstr, increment_path,
-                            non_max_suppression_depth,
-                           non_max_suppression_depth,
+                           check_yaml, coco80_to_coco91_class, colorstr, increment_path, non_max_suppression_depth,
                            print_args, scale_boxes, xywh2xyxy, xyxy2xywh)
 from utils.metrics import ConfusionMatrix, ap_per_class, box_iou
 from utils.plots import output_to_target, plot_images, plot_val_study
@@ -269,12 +267,17 @@ def run(
         # Plot images
         if plots and batch_i < 3:
             # only draw class labels, drop last column for depth
-            plot_images(im, targets[...,:-1], paths, save_dir / f'val_batch{batch_i}_labels.jpg', names)
+            plot_images(im, targets[...,:-1], paths, save_dir / f'val_batch{batch_i}_gt.jpg', names)
+            #  last column for depth
+            plot_images(im, targets[..., :], paths, save_dir / f'val_batch{batch_i}_gt_depth.jpg', names)
+
             # draw class labels and conf
             preds_without_dep = [pred[..., :-1] for pred in preds]
             plot_images(im, output_to_target(preds_without_dep), paths, save_dir / f'val_batch{batch_i}_pred_conf.jpg', names)
-            # draw class labels, conf, and depth
-            plot_images(im, output_to_target(preds), paths, save_dir / f'val_batch{batch_i}_pred_conf_depth.jpg', names)
+            # # draw class labels, conf, and depth
+            # plot_images(im, output_to_target(preds), paths, save_dir / f'val_batch{batch_i}_pred_conf_depth.jpg', names)
+            # draw class labels, and depth
+            plot_images(im, output_to_target(preds), paths, save_dir / f'val_batch{batch_i}_pred_depth.jpg', names)
 
         callbacks.run('on_val_batch_end', batch_i, im, targets, paths, shapes, preds)
 

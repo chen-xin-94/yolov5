@@ -274,13 +274,22 @@ def plot_images(images, targets, paths=None, fname='images.jpg', names=None):
             ti = targets[targets[:, 0] == i]  # image targets
             boxes = xywh2xyxy(ti[:, 2:6]).T
             classes = ti[:, 1].astype('int')
-            # modify for depth, # TODO: check if that breaks drawing for segmentation task
-            is_conf = ti.shape[1] == 7  # is there a conf column?
-            is_dep = ti.shape[1] == 8  # is there a depth column?
-            conf = ti[:, 6] if is_conf or is_dep else None  # check for confidence presence (label vs pred)
-            # depth is normalized to [0,1] for kitti dataset, so multiplied by 146.85 to get the real depth
-            # TODO: check if previous argument is true for other datasets
-            dep = ti[:, 7]*146.85 if is_dep else None  # check for depth presence (label vs pred)
+
+            # check what should be in the labels # TODO: check if that breaks drawing for segmentation tasks
+            if '_pred' in str(fname): # targets in format [batch_id, cls, x, y, w, h, conf, depth]
+                is_conf = ti.shape[1] == 7  # is there a conf column?
+                is_dep = ti.shape[1] == 8  # is there a depth column?
+                conf = ti[:, 6] if is_conf or is_dep else None  # check for confidence presence (label vs pred)
+                dep = ti[:, 7] if is_dep else None  # check for depth presence (label vs pred)
+            if '_gt' in str(fname): # targets in format [batch_id, cls, x, y, w, h, depth]
+                is_conf = None
+                is_dep = ti.shape[1] == 7  # is there a depth column?
+                dep = ti[:, 6] if is_dep else None  # check for depth presence (label vs pred)
+            draw_conf = "_conf" in str(fname) and is_conf # if draw conf in labels
+            draw_dep = "_depth" in str(fname) and is_dep # if draw depth in labels
+
+            # # depth is normalized to [0,1] for kitti dataset, so multiplied by 146.85 to get the real depth
+            # dep = dep * 146.85 if dep
 
             if boxes.shape[1]:
                 if boxes.max() <= 1.01:  # if normalized with tolerance 0.01
@@ -296,10 +305,10 @@ def plot_images(images, targets, paths=None, fname='images.jpg', names=None):
                 cls = names[cls] if names else cls
                 # modify for depth
                 label = f'{cls}'
-                if is_conf:
-                    label = f'{cls} {conf[j]:.1f}'
-                if is_dep:
-                    label = f'{cls} {conf[j]:.1f} {dep[j]:.2f}m'
+                if draw_conf:
+                    label += f' {conf[j]:.1f}'
+                if draw_dep:
+                    label += f' {dep[j]:.2f}m'
                 annotator.box_label(box, label, color=color)
     annotator.im.save(fname)  # save
 
