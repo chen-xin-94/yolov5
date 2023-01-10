@@ -107,10 +107,14 @@ class DetectDepth(Detect):
                 
                 # Detect (boxes only)
                 # xy, wh, conf, d = x[i].sigmoid().split((2, 2, self.nc + 1, 1), 4)
-                # TODO: activation for depth
-                # linear act for depth, sigmoid for others
+
                 xy, wh, conf, d = x[i].split((2, 2, self.nc + 1, 1), 4) # an extra 1 for depth
                 xy, wh, conf = xy.sigmoid(), wh.sigmoid(), conf.sigmoid()
+
+                # TODO: activation for depth
+                # d = d  # linear
+                d = d.exp()  # exponential
+
                 xy = (xy * 2 + self.grid[i]) * self.stride[i]  # xy
                 wh = (wh * 2) ** 2 * self.anchor_grid[i]  # wh
                 y = torch.cat((xy, wh, conf, d), 4)
