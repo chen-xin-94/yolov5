@@ -21,7 +21,11 @@ RANK = int(os.getenv("RANK", -1))
 try:
     from torch.utils.tensorboard import SummaryWriter
 except ImportError:
-    SummaryWriter = lambda *args: None  # None = SummaryWriter(str)
+
+    def SummaryWriter(*args):
+        """Fall back to SummaryWriter returning None if TensorBoard is not installed."""
+        return None  # None = SummaryWriter(str)
+
 
 try:
     import wandb
