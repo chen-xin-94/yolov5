@@ -1,5 +1,9 @@
-# Ultralytics YOLOv5 🚀, AGPL-3.0 license
-# Global Wheat 2020 dataset http://www.global-wheat.com/ by University of Saskatchewan
+# Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
+# Global Wheat 2020 dataset https://www.global-wheat.com/ by University of Saskatchewan
+# Documentation: https://docs.ultralytics.com/datasets/detect/globalwheat2020
+# Dataset format: https://docs.ultralytics.com/datasets/detect#ultralytics-yolo-format
+# Training docs: https://docs.ultralytics.com/modes/train
 # Example usage: python train.py --data GlobalWheat2020.yaml
 # parent
 # ├── yolov5
@@ -36,7 +40,7 @@ download: |
   # Download
   dir = Path(yaml['path'])  # dataset root dir
   urls = ['https://zenodo.org/record/4298502/files/global-wheat-codalab-official.zip',
-          'https://github.com/ultralytics/yolov5/releases/download/v1.0/GlobalWheat2020_labels.zip']
+          'https://github.com/ultralytics/assets/releases/download/v0.0.0/GlobalWheat2020_labels.zip']
   download(urls, dir=dir)
 
   # Make Directories

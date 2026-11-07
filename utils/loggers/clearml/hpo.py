@@ -1,4 +1,4 @@
-# Ultralytics YOLOv5 🚀, AGPL-3.0 license
+# Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
 from clearml import Task
 
@@ -56,7 +56,7 @@ optimizer = HyperParameterOptimizer(
     ],
     # this is the objective metric we want to maximize/minimize
     objective_metric_title="metrics",
-    objective_metric_series="mAP_0.5",
+    objective_metric_series="mAP50",
     # now we decide if we want to maximize it or minimize it (accuracy we maximize)
     objective_metric_sign="max",
     # let us limit the number of concurrent experiments,
@@ -64,10 +64,10 @@ optimizer = HyperParameterOptimizer(
     # if we have an auto-scaler connected, this, by proxy, will limit the number of machine
     max_number_of_concurrent_tasks=1,
     # this is the optimizer class (actually doing the optimization)
-    # Currently, we can choose from GridSearch, RandomSearch or OptimizerBOHB (Bayesian optimization Hyper-Band)
+    # Available options include GridSearch, RandomSearch, OptimizerBOHB (Bayesian optimization Hyper-Band) and OptimizerOptuna
     optimizer_class=OptimizerOptuna,
     # If specified only the top K performing Tasks will be kept, the others will be automatically archived
-    save_top_k_tasks_only=5,  # 5,
+    save_top_k_tasks_only=5,
     compute_time_limit=None,
     total_max_jobs=20,
     min_iteration_per_job=None,
@@ -86,5 +86,3 @@ optimizer.start_locally()
 optimizer.wait()
 # make sure background optimization stopped
 optimizer.stop()
-
-print("We are done, good bye")

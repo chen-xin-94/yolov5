@@ -1,4 +1,4 @@
-# Ultralytics YOLOv5 🚀, AGPL-3.0 license
+# Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 """
 Run YOLOv5 classification inference on images, videos, directories, globs, YouTube, webcam, streams, etc.
 
@@ -20,7 +20,7 @@ Usage - formats:
                                            yolov5s-cls.onnx               # ONNX Runtime or OpenCV DNN with --dnn
                                            yolov5s-cls_openvino_model     # OpenVINO
                                            yolov5s-cls.engine             # TensorRT
-                                           yolov5s-cls.mlmodel            # CoreML (macOS-only)
+                                           yolov5s-cls.mlpackage          # CoreML (macOS-only)
                                            yolov5s-cls_saved_model        # TensorFlow SavedModel
                                            yolov5s-cls.pb                 # TensorFlow GraphDef
                                            yolov5s-cls.tflite             # TensorFlow Lite
@@ -74,8 +74,6 @@ def run(
     view_img=False,  # show results
     save_txt=False,  # save results to *.txt
     nosave=False,  # do not save images/videos
-    augment=False,  # augmented inference
-    visualize=False,  # visualize features
     update=False,  # update all models
     project=ROOT / "runs/predict-cls",  # save results to project/name
     name="exp",  # save results to project/name
@@ -84,6 +82,7 @@ def run(
     dnn=False,  # use OpenCV DNN for ONNX inference
     vid_stride=1,  # video frame-rate stride
 ):
+    """Conducts YOLOv5 classification inference on diverse input sources and saves results."""
     source = str(source)
     save_img = not nosave and not source.endswith(".txt")  # save inference images
     is_file = Path(source).suffix[1:] in (IMG_FORMATS + VID_FORMATS)
@@ -110,13 +109,13 @@ def run(
         dataset = LoadStreams(source, img_size=imgsz, transforms=classify_transforms(imgsz[0]), vid_stride=vid_stride)
         bs = len(dataset)
     elif screenshot:
-        dataset = LoadScreenshots(source, img_size=imgsz, stride=stride, auto=pt)
+        dataset = LoadScreenshots(source, img_size=imgsz, transforms=classify_transforms(imgsz[0]))
     else:
         dataset = LoadImages(source, img_size=imgsz, transforms=classify_transforms(imgsz[0]), vid_stride=vid_stride)
     vid_path, vid_writer = [None] * bs, [None] * bs
 
     # Run inference
-    model.warmup(imgsz=(1 if pt else bs, 3, *imgsz))  # warmup
+    model.warmup(imgsz=(1 if pt or model.triton else bs, 3, *imgsz))  # warmup
     seen, windows, dt = 0, [], (Profile(device=device), Profile(device=device), Profile(device=device))
     for path, im, im0s, vid_cap, s in dataset:
         with dt[0]:
@@ -146,7 +145,7 @@ def run(
             save_path = str(save_dir / p.name)  # im.jpg
             txt_path = str(save_dir / "labels" / p.stem) + ("" if dataset.mode == "image" else f"_{frame}")  # im.txt
 
-            s += "%gx%g " % im.shape[2:]  # print string
+            s += "{:g}x{:g} ".format(*im.shape[2:])  # print string
             annotator = Annotator(im0, example=str(names), pil=True)
 
             # Print results
@@ -191,16 +190,20 @@ def run(
                     vid_writer[i].write(im0)
 
         # Print time (inference-only)
-        LOGGER.info(f"{s}{dt[1].dt * 1E3:.1f}ms")
+        LOGGER.info(f"{s}{dt[1].dt * 1e3:.1f}ms")
 
     # Print results
     t = tuple(x.t / seen * 1e3 for x in dt)  # speeds per image
-    LOGGER.info(f"Speed: %.1fms pre-process, %.1fms inference, %.1fms NMS per image at shape {(1, 3, *imgsz)}" % t)
+    LOGGER.info(
+        f"Speed: %.1fms pre-process, %.1fms inference, %.1fms post-process per image at shape {(1, 3, *imgsz)}" % t
+    )
     if save_txt or save_img:
         s = f"\n{len(list(save_dir.glob('labels/*.txt')))} labels saved to {save_dir / 'labels'}" if save_txt else ""
         LOGGER.info(f"Results saved to {colorstr('bold', save_dir)}{s}")
     if update:
-        strip_optimizer(weights[0])  # update model (to fix SourceChangeWarning)
+        strip_optimizer(
+            weights[0] if isinstance(weights, (list, tuple)) else weights
+        )  # update model (to fix SourceChangeWarning)
 
 
 def parse_opt():
@@ -214,8 +217,6 @@ def parse_opt():
     parser.add_argument("--view-img", action="store_true", help="show results")
     parser.add_argument("--save-txt", action="store_true", help="save results to *.txt")
     parser.add_argument("--nosave", action="store_true", help="do not save images/videos")
-    parser.add_argument("--augment", action="store_true", help="augmented inference")
-    parser.add_argument("--visualize", action="store_true", help="visualize features")
     parser.add_argument("--update", action="store_true", help="update all models")
     parser.add_argument("--project", default=ROOT / "runs/predict-cls", help="save results to project/name")
     parser.add_argument("--name", default="exp", help="save results to project/name")
@@ -231,7 +232,7 @@ def parse_opt():
 
 def main(opt):
     """Executes YOLOv5 model inference with options for ONNX DNN and video frame-rate stride adjustments."""
-    check_requirements(ROOT / "requirements.txt", exclude=("tensorboard", "thop"))
+    check_requirements(ROOT / "requirements.txt", exclude=("tensorboard", "ultralytics-thop"))
     run(**vars(opt))
 
 

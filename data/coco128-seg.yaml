@@ -1,6 +1,11 @@
-# Ultralytics YOLOv5 🚀, AGPL-3.0 license
-# COCO128-seg dataset https://www.kaggle.com/ultralytics/coco128 (first 128 images from COCO train2017) by Ultralytics
-# Example usage: python train.py --data coco128.yaml
+# Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
+# COCO128-seg dataset https://www.kaggle.com/datasets/ultralytics/coco128 (first 128 images from COCO train2017) by Ultralytics
+# Documentation: https://docs.ultralytics.com/datasets/segment/coco128-seg
+# Dataset format: https://docs.ultralytics.com/datasets/segment#ultralytics-yolo-format
+# Segmentation docs: https://docs.ultralytics.com/tasks/segment
+# Training docs: https://docs.ultralytics.com/modes/train
+# Example usage: python segment/train.py --data coco128-seg.yaml
 # parent
 # ├── yolov5
 # └── datasets
@@ -96,4 +101,4 @@ names:
   79: toothbrush
 
 # Download script/URL (optional)
-download: https://ultralytics.com/assets/coco128-seg.zip
+download: https://github.com/ultralytics/assets/releases/download/v0.0.0/coco128-seg.zip
